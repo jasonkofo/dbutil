@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 type EnvReadMode uint8
@@ -29,6 +30,7 @@ const (
 	Migrate
 	PanicOnFailedMigration
 	SingularTable
+	SkipDefaultTransaction
 )
 
 type DB struct {
@@ -169,23 +171,30 @@ func (db *DB) createIfNotExists() error {
 
 // OpenDefault allows the user to open with the default options
 func (db *DB) OpenDefault() error {
-	return db.Open(CreateIfNotExists | PanicOnFailedMigration | Migrate | SingularTable)
+	return db.Open(DefaultOpenFlags(), nil)
 }
 
-func (db *DB) Open(flags DBOpenFlags) error {
+// OpenDefaultWithSchemaReplacer allows the user to open with the default options
+func (db *DB) OpenDefaultWithSchemaReplacer(r schema.Replacer) error {
+	return db.Open(DefaultOpenFlags(), r)
+}
+
+func (db *DB) Open(flags DBOpenFlags, r schema.Replacer) error {
 	if flags&CreateIfNotExists > 0 {
 		if err := db.createIfNotExists(); err != nil {
 			return fmt.Errorf("Failed to create the db on open: %v", err)
 		}
 	}
 
-	err := db.Utils.OpenConnection(db, flags)
+	err := db.Utils.OpenConnection(db, flags, r)
 	if err == nil {
 		if flags&Migrate > 0 {
 			if err = db.Migrate(); err != nil {
 				return fmt.Errorf("Could not migrate database '%v': %v", db.Database, err)
 			}
 		}
+	} else {
+		return fmt.Errorf("Could not open connection to database: %v", err)
 	}
 
 	return nil

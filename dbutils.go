@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm/schema"
 )
 
 var inContainer bool
@@ -55,7 +57,7 @@ type DBUtil interface {
 	IsTableNotExistError(err error) bool
 	MigrationTableExists(db *DB) error
 	CreateMigrationTable(db *DB) error
-	OpenConnection(db *DB, flags DBOpenFlags) error
+	OpenConnection(db *DB, flags DBOpenFlags, r schema.Replacer) error
 	CreateIfNotExists(db *DB) error
 	MigrationTableName() string
 }

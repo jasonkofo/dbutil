@@ -103,11 +103,12 @@ func (pdu *PostgresDBUtils) CreateMigrationTable(db *DB) error {
 	return nil
 }
 
-func (pdu *PostgresDBUtils) OpenConnection(db *DB, flags DBOpenFlags) error {
+func (pdu *PostgresDBUtils) OpenConnection(db *DB, flags DBOpenFlags, r schema.Replacer) error {
 	var ns schema.Namer
 	if flags&SingularTable > 0 {
 		ns = schema.NamingStrategy{
 			SingularTable: true,
+			NameReplacer:  r,
 		}
 	} else {
 		ns = schema.NamingStrategy{}
@@ -115,6 +116,11 @@ func (pdu *PostgresDBUtils) OpenConnection(db *DB, flags DBOpenFlags) error {
 	cfg := &gorm.Config{
 		NamingStrategy: ns,
 	}
+
+	if flags&SkipDefaultTransaction > 0 {
+		cfg.SkipDefaultTransaction = true
+	}
+
 	if conn, err := gorm.Open(postgres.Open(db.DSN()), cfg); err == nil {
 		db.Conn = conn
 	} else {
@@ -131,6 +137,10 @@ func (pdu *PostgresDBUtils) OpenConnection(db *DB, flags DBOpenFlags) error {
 		}
 	}
 	return nil
+}
+
+func DefaultOpenFlags() DBOpenFlags {
+	return CreateIfNotExists | PanicOnFailedMigration | Migrate | SingularTable | SkipDefaultTransaction
 }
 
 func (pdu *PostgresDBUtils) CreateIfNotExists(db *DB) error {
